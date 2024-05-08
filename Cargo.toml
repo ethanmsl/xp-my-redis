@@ -1,5 +1,5 @@
 [package]
-name = "xp-mini-redis"
+name = "tutr-tokio"
 version = "0.1.0"
 edition = "2021"
 
