@@ -1,7 +1,9 @@
 # Tokio Async Tutorial Repo \ Mini-Redis
 
 [Tokio Async Tutorial Website](https://tokio.rs/tokio/tutorial)
-
+# run notes
+uses: pre-fab **mini-redis** to interact with (at least initially)
+`cargo install mini-redis` ~~> `mini-redis-server`, `mini-redis-client`
 
 # Personal Notes
 
