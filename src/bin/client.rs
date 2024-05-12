@@ -1,8 +1,15 @@
 //! Client
 
 use mini_redis::client;
-use my_redis::boilerplate::{tracing_subscribe_boilerplate, SubKind};
+use my_redis::boilerplate::tracing_subscribe_boilerplate;
+use my_redis::boilerplate::SubKind;
+
 use tokio::sync::mpsc;
+use tokio::sync::oneshot;
+
+// I did not choose this name: "Responder" is type of "sender" half of channel
+// to be given as a defacto address to receive a response at
+type Responder<T> = oneshot::Sender<mini_redis::Result<T>>;
 
 #[tokio::main]
 async fn main() {
@@ -23,15 +30,13 @@ async fn main() {
 
                 while let Some(cmd) = rx.recv().await {
                         match cmd {
-                                Get { key } => {
-                                        client.get(&key)
-                                                .await
-                                                .expect("Got key's value from client.");
+                                Get { key, resp } => {
+                                        let res = client.get(&key).await;
+                                        let _ = resp.send(res); // discard errors, acceptable
                                 }
-                                Set { key, val } => {
-                                        client.set(&key, val)
-                                                .await
-                                                .expect("Set key's value with client.");
+                                Set { key, val, resp } => {
+                                        let res = client.set(&key, val).await;
+                                        let _ = resp.send(res); // discard errors, acceptable
                                 }
                         }
                 }
@@ -39,19 +44,31 @@ async fn main() {
 
         // adds request (Get) to deaddrop; manager takes and executes
         let t1 = tokio::spawn(async move {
+                let (resp_tx, resp_rx) = oneshot::channel();
                 let cmd = Get {
                         key: "foo".to_string(),
+                        resp: resp_tx,
                 };
+                // send
                 tx.send(cmd).await.expect("Sent or slept.");
+                // await resp
+                let res = resp_rx.await;
+                tracing::info!(?res, "received response: ");
         });
 
         // adds request (Set) to deaddrop; manager takes and executes
         let t2 = tokio::spawn(async move {
+                let (resp_tx, resp_rx) = oneshot::channel();
                 let cmd = Set {
                         key: "foo".to_string(),
                         val: "bar".into(),
+                        resp: resp_tx,
                 };
+                // send
                 tx2.send(cmd).await.expect("Sent or slept");
+                // await resp
+                let res = resp_rx.await;
+                tracing::info!(?res, "received response: ");
         });
 
         t1.await.expect("Key value acquired.");
@@ -64,6 +81,13 @@ use bytes::Bytes;
 /// "Commands" (requests) to(for) redis server
 #[derive(Debug)]
 enum Command {
-        Get { key: String },
-        Set { key: String, val: Bytes },
+        Get {
+                key: String,
+                resp: Responder<Option<Bytes>>,
+        },
+        Set {
+                key: String,
+                val: Bytes,
+                resp: Responder<()>,
+        },
 }
