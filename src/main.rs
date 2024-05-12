@@ -87,7 +87,7 @@ mod shard_hash {
             sync::{Arc, Mutex},
       };
 
-      type ShardedDb = Arc<Vec<Mutex<HashMap<String, Vec<u8>>>>>;
+      type ShardedDb<K, V> = Arc<Vec<Mutex<HashMap<K, V>>>>;
 
       /// Hash a thing
       /// (paritcularly a string)
@@ -102,7 +102,10 @@ mod shard_hash {
       /// An attempt to decrease contention for HashMap functionality.
       ///
       /// Warn: I'm not clear on how we determine which Hashmap we belong to without going through them all, as written.  Which would seem to defeat the point -- unless reading + locking is that much speedier a process...
-      fn new_sharded_db(num_shards: usize) -> ShardedDb {
+      fn new_sharded_db<K, V>(num_shards: usize) -> ShardedDb<K, V>
+      where
+            K: Eq+Hash,
+            V: Default, {
             let mut db = Vec::with_capacity(num_shards);
             for _ in 0..num_shards {
                   db.push(Mutex::new(HashMap::new()));
@@ -116,7 +119,10 @@ mod shard_hash {
       /// ## Improvement:
       /// This could produce generic code, by refering to T in A<V<M<H<T,_>>>
       /// , but ... not sure of precise syntax
-      pub fn divine_hashmap(db: &ShardedDb, key: &str) -> usize {
+      pub fn divine_hashmap<K, V>(db: &ShardedDb<K, V>, key: &K) -> usize
+      where
+            K: Eq+Hash,
+            V: Default, {
             hash(&key).rem_euclid(db.len())
       }
 }
