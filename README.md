@@ -5,7 +5,10 @@
 uses: pre-fab **mini-redis** to interact with (at least initially)
 `cargo install mini-redis` ~~> `mini-redis-server`, `mini-redis-client`
 
-# Warnings:
+# Notes:
+- tokio, by default, is multi-threaded and 'reserves the right' to move tasks across threads at every await.
+        - hence all Futures must be send+sync; this is true (pretty sure) even if you run tokio on a single thread (which is an option ("flavor"))
+        - non-(send+sync) elements **are** welcome in async functions as long as they're not held across an await
 - do NOT always uses tokio::sync::Mutex
         - attempts to acquire std::..::Mutex lead to **blocking**
         - attempts to acquire tokio::..::Mutex lead to **yielding**
