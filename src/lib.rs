@@ -79,9 +79,6 @@ mod shard_hash {
       /// Determine which element of a sharded hashmap to use
       /// before making any requests or shard collection
       ///
-      /// ## Improvement:
-      /// This could produce generic code, by refering to T in A<V<M<H<T,_>>>
-      /// , but ... not sure of precise syntax
       pub fn divine_hashmap<K, V>(db: &ShardedDb<K, V>, key: &K) -> usize
       where
             K: Eq+Hash,
