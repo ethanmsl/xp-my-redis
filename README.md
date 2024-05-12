@@ -24,6 +24,13 @@ uses: pre-fab **mini-redis** to interact with (at least initially)
         - async (tokio) Mutex is more expensive than std mutex -- hence preference for latter in some performance critical situations where it *can* be used
                 - wrapping blocking-mutex in a struct and only operating on it in blocking-code is one mentioned workaround to using blocking-mutexes (indirectly) in logi-independent
                 - creating a separate task to manage shared state and communicating with it via channels is also mentioned
+- deaddrop (channel) strategies in tokio:      
+        - **mpsc**: many push (sideA) one pop (sideB)
+        - **oneshot**: single value stored, one producer one consumer
+        - **broadcast**: many push, many read, consumption on being fully seen, backpressure mechanism may push out old values
+        - **watch**: many readers, but consumed on *push*, not by reading
+        - ~task-style exists in [async-channel](https://docs.rs/async-channel/) crate: multi consumer, consumption on read by anyone
+
 
 # Personal Notes
 
@@ -64,8 +71,8 @@ But *exclude*:
 Conditional *include*/*exclude*:
 `BBB AA BBB AAAA A` - **conditional** exclude - violates our code if written in typical serial fashion where A would have to hit a `.await` before it could yield to B.  However, if A & B were designated as non-dependent from the beginning and set as separate 'logic-threads' then it would be an*include*
 
-## Channels ¿are Dead Drops?
-
+## Channels are Dead Drops
+(update: yes, this was correct)
 **Warn**: I'm less certain here, just working out how they seem like they *would* work.
 
 "Channels", to me, evokes a sense of one thread or stream pushing info into another.  This is at odds with framework-free / low-framework (gotta kernel: gotta framework) processing -- where the program must animate what is relevant -- it must drive time forward.
