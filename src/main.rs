@@ -1,8 +1,16 @@
+use std::{
+      collections::HashMap,
+      sync::{Arc, Mutex},
+};
+
 use boilerplate::{tracing_subscribe_boilerplate, SubKind};
+use bytes::Bytes;
 use mini_redis::Frame;
 use my_redis::boilerplate;
 use tokio::net::{TcpListener, TcpStream};
 use tracing;
+
+type Db = Arc<Mutex<HashMap<String, Bytes>>>;
 
 #[tokio::main]
 async fn main() {
@@ -17,44 +25,50 @@ async fn main() {
             .expect("Listener binds.");
       tracing::debug!("listener bound.");
 
+      let db = Arc::new(Mutex::new(HashMap::new()));
+
       loop {
             // The Second item contains the IP and port of the new connection.
             // -- presumably "accept" is "accept if asked, wait otherwise"
             tracing::debug!("Awaiting socket receipt...");
             let (socket, _) = listener.accept().await.expect("Socket acquired.");
-            tracing::debug!("Socket received; Spawning thread to process...");
+            tracing::debug!("'Cloning' Arc.");
+            let db = db.clone();
+            tracing::debug!("Socket accepted; Spawning thread to process...");
             tokio::spawn(async move {
                   tracing::debug!("Thread for socket processing spawned.");
                   tracing::debug!("Processing socket...");
-                  process(socket).await;
+                  process(socket, db).await;
                   tracing::debug!("Socket processed.");
             });
       }
 }
 
-async fn process(socket: TcpStream) {
-      use std::collections::HashMap;
-
+async fn process(socket: TcpStream, db: Db) {
       use mini_redis::Command::{self, Get, Set};
 
-      let mut db = HashMap::new();
       // "mini_redis specific" Read&Write "frames" instead of working with byte streams
       let mut connection = mini_redis::Connection::new(socket);
 
       while let Some(frame) = connection.read_frame().await.expect("frame read") {
             tracing::info!("GOT: {:?}", frame);
-            let response = match Command::from_frame(frame).unwrap() {
+            let response = match Command::from_frame(frame).expect("Unpoisoned mutex.") {
                   Set(cmd) => {
                         // value stored as Vec<u8>
-                        db.insert(cmd.key().to_string(), cmd.value().to_vec());
+                        tracing::debug!("Acquiring mutex lock...");
+                        let mut db = db.lock().unwrap();
+                        tracing::debug!("Mutex lock acquired.");
+                        db.insert(cmd.key().to_string(), cmd.value().clone());
                         Frame::Simple("OK".to_string())
                   }
-                  Get(cmd) =>
+                  Get(cmd) => {
+                        let db = db.lock().expect("Unpoisoned mutex.");
                         if let Some(value) = db.get(cmd.key()) {
-                              Frame::Bulk(value.clone().into())
+                              Frame::Bulk(value.clone())
                         } else {
                               Frame::Null
-                        },
+                        }
+                  }
                   cmd => unimplemented!("{:?}", cmd),
             };
             // write response to client
