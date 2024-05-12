@@ -4,7 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-tokio = { version = "1", features = ["full"] }
+console-subscriber = "0.1.5"
+tokio = { version = "1", features = ["full", "tracing"] }
 mini-redis = "0.4"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 tracing = "0.1.40"

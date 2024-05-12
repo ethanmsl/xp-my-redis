@@ -1,3 +1,4 @@
+use boilerplate::{tracing_subscribe_boilerplate, SubKind};
 use mini_redis::Frame;
 use my_redis::boilerplate;
 use tokio::net::{TcpListener, TcpStream};
@@ -5,18 +6,29 @@ use tracing;
 
 #[tokio::main]
 async fn main() {
-      boilerplate::tracing_subscribe_boilerplate("debug");
+      tracing_subscribe_boilerplate(SubKind::Tracing(String::from("debug")));
+      // tracing_subscribe_boilerplate(SubKind::Console);
+      tracing::info!("Tracing Subscriber active.");
 
       // bind "listener" to an address
+      tracing::debug!("Binding Listener to ip & port...");
       let listener = TcpListener::bind("127.0.0.1:6379")
             .await
             .expect("Listener binds.");
+      tracing::debug!("listener bound.");
 
       loop {
             // The Second item contains the IP and port of the new connection.
             // -- presumably "accept" is "accept if asked, wait otherwise"
+            tracing::debug!("Awaiting socket receipt...");
             let (socket, _) = listener.accept().await.expect("Socket acquired.");
-            process(socket).await;
+            tracing::debug!("Socket received; Spawning thread to process...");
+            tokio::spawn(async move {
+                  tracing::debug!("Thread for socket processing spawned.");
+                  tracing::debug!("Processing socket...");
+                  process(socket).await;
+                  tracing::debug!("Socket processed.");
+            });
       }
 }
 
