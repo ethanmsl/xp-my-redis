@@ -11,7 +11,10 @@ uses: pre-fab **mini-redis** to interact with (at least initially)
         - non-(send+sync) elements **are** welcome in async functions as long as they're not held across an await
 - do NOT always uses tokio::sync::Mutex
         - attempts to acquire std::..::Mutex lead to **blocking**
-        - attempts to acquire tokio::..::Mutex lead to **yielding**
+        - attempts to acquire tokio::..::Mutex lead to **yielding** (sleeping the holder!)
+        - Given reasons: performance impact of async Mutex is higher (and mutexes may often be a bottleneck already)
+        - Unstated: *sleeping* while *holding a lock* is often a jerk move in concurrent culture
+                - would likely be very special conditions that required this, and its plausible that they'd most often be amenable to better design.
         - [ref_1](https://users.rust-lang.org/t/tokio-mutex-std-mutex/88035)
         - [ref_2](https://stackoverflow.com/questions/73840520/what-is-the-difference-between-stdsyncmutex-vs-tokiosyncmutex)
         - [ref_3](https://docs.rs/tokio/latest/tokio/sync/struct.Mutex.html)
