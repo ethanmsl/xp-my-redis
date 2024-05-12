@@ -44,6 +44,7 @@ async fn main() {
         }
 }
 
+/// Process commands from a TcpStream, translate into 'frames', and manage comms with database.
 async fn process(socket: TcpStream, db: Db) {
         use mini_redis::Command::{self, Get, Set};
 

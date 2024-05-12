@@ -15,6 +15,8 @@ type Responder<T> = oneshot::Sender<mini_redis::Result<T>>;
 async fn main() {
         use Command::*;
         tracing_subscribe_boilerplate(SubKind::Tracing(String::from("debug")));
+        // tracing_subscribe_boilerplate(SubKind::Console);
+        tracing::info!("Tracing Subscriber active.");
 
         // tx: send
         // rx: receive
