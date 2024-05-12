@@ -15,13 +15,13 @@
 
 # match_arm_blocks = false          # only use {} if multiple statements (vs multiline single statements)
 # # match_block_trailing_comma = true # commas between all match arms ({},)
-imports_granularity = "Crate"     # group all imports for a crate together
+# imports_granularity = "Crate"     # group all imports for a crate together
 
 # overflow_delimited_expr = true # no double nesting for vertical formatted lists, etc.
 # reorder_impl_items = true      # assoc_type & const at top of impl
 # merge_derives = false          # merging can make reading harder
 
-group_imports = "StdExternalCrate" # category style grouping of imports (ala isort in python)
+# group_imports = "StdExternalCrate" # category style grouping of imports (ala isort in python)
 # struct_field_align_threshold = 20  # move distance to seek type alignment in struct fields
 tab_spaces = 8                     # legible groups! :)
 
