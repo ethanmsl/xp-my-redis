@@ -5,6 +5,12 @@
 uses: pre-fab **mini-redis** to interact with (at least initially)
 `cargo install mini-redis` ~~> `mini-redis-server`, `mini-redis-client`
 
+# Warnings:
+- do NOT always uses tokio::sync::Mutex
+        - attempts to acquire std::..::Mutex lead to **blocking**
+        - attempts to acquire tokio::..::Mutex lead to **yielding**
+        - [ref_1](https://users.rust-lang.org/t/tokio-mutex-std-mutex/88035)
+        - [ref_2](https://stackoverflow.com/questions/73840520/what-is-the-difference-between-stdsyncmutex-vs-tokiosyncmutex)
 
 # Personal Notes
 
