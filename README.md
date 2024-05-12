@@ -25,7 +25,8 @@ uses: pre-fab **mini-redis** to interact with (at least initially)
                 - wrapping blocking-mutex in a struct and only operating on it in blocking-code is one mentioned workaround to using blocking-mutexes (indirectly) in logi-independent
                 - creating a separate task to manage shared state and communicating with it via channels is also mentioned
 - deaddrop (channel) strategies in tokio:      
-        - **mpsc**: many push (sideA) one pop (sideB)
+        - **mpsc**: many push (sideA) one pop (sideB); *async* a sender is put to sleep if they try to push to a channel at capacity.
+                - NOTE: deaddrop disappears if all senders disappear ... it does not wait until its done being read! (`recvr` will return `None`); a disconnected receiver will result in a `SendError`
         - **oneshot**: single value stored, one producer one consumer
         - **broadcast**: many push, many read, consumption on being fully seen, backpressure mechanism may push out old values
         - **watch**: many readers, but consumed on *push*, not by reading
