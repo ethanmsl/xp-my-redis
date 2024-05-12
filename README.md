@@ -19,6 +19,8 @@ uses: pre-fab **mini-redis** to interact with (at least initially)
         >
         > A common pattern is to wrap the Arc<Mutex<...>> in a struct that provides non-async methods for performing operations on the data within, and only lock the mutex inside these methods. The mini-redis example provides an illustration of this pattern.
         - async (tokio) Mutex is more expensive than std mutex -- hence preference for latter in some performance critical situations where it *can* be used
+                - wrapping blocking-mutex in a struct and only operating on it in blocking-code is one mentioned workaround to using blocking-mutexes (indirectly) in logi-independent
+                - creating a separate task to manage shared state and communicating with it via channels is also mentioned
 
 # Personal Notes
 
