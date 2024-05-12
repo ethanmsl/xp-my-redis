@@ -78,3 +78,45 @@ async fn process(socket: TcpStream, db: Db) {
                   .expect("Write to client");
       }
 }
+
+#[allow(dead_code)]
+mod shard_hash {
+      use std::{
+            collections::HashMap,
+            hash::{DefaultHasher, Hash, Hasher},
+            sync::{Arc, Mutex},
+      };
+
+      type ShardedDb = Arc<Vec<Mutex<HashMap<String, Vec<u8>>>>>;
+
+      /// Hash a thing
+      /// (paritcularly a string)
+      fn hash<T: Hash>(t: &T) -> usize {
+            let mut hasher = DefaultHasher::new();
+            t.hash(&mut hasher);
+            hasher.finish() as usize
+      }
+
+      /// Create an Arc-wrapped vector of Mutexed Hashmaps.
+      ///
+      /// An attempt to decrease contention for HashMap functionality.
+      ///
+      /// Warn: I'm not clear on how we determine which Hashmap we belong to without going through them all, as written.  Which would seem to defeat the point -- unless reading + locking is that much speedier a process...
+      fn new_sharded_db(num_shards: usize) -> ShardedDb {
+            let mut db = Vec::with_capacity(num_shards);
+            for _ in 0..num_shards {
+                  db.push(Mutex::new(HashMap::new()));
+            }
+            Arc::new(db)
+      }
+
+      /// Determine which element of a sharded hashmap to use
+      /// before making any requests or shard collection
+      ///
+      /// ## Improvement:
+      /// This could produce generic code, by refering to T in A<V<M<H<T,_>>>
+      /// , but ... not sure of precise syntax
+      pub fn divine_hashmap(db: &ShardedDb, key: &str) -> usize {
+            hash(&key).rem_euclid(db.len())
+      }
+}
