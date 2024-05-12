@@ -14,6 +14,8 @@ async fn main() {
       let (tx, mut rx) = mpsc::channel(32);
       let tx2 = tx.clone();
 
+      // Has unique access to the connection (confusingly named "client"... in this file named "client")
+      // reads from queued message requests and sends them
       let manager = tokio::spawn(async move {
             let mut client = client::connect("127.0.0.1:6379")
                   .await
@@ -35,6 +37,7 @@ async fn main() {
             }
       });
 
+      // adds request (Get) to deaddrop; manager takes and executes
       let t1 = tokio::spawn(async move {
             let cmd = Get {
                   key: "foo".to_string(),
@@ -42,6 +45,7 @@ async fn main() {
             tx.send(cmd).await.expect("Sent or slept.");
       });
 
+      // adds request (Set) to deaddrop; manager takes and executes
       let t2 = tokio::spawn(async move {
             let cmd = Set {
                   key: "foo".to_string(),
