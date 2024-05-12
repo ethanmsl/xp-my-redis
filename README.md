@@ -11,6 +11,11 @@ uses: pre-fab **mini-redis** to interact with (at least initially)
         - attempts to acquire tokio::..::Mutex lead to **yielding**
         - [ref_1](https://users.rust-lang.org/t/tokio-mutex-std-mutex/88035)
         - [ref_2](https://stackoverflow.com/questions/73840520/what-is-the-difference-between-stdsyncmutex-vs-tokiosyncmutex)
+        - [ref_3](https://docs.rs/tokio/latest/tokio/sync/struct.Mutex.html)
+        - > Note that, although the compiler will not prevent the std Mutex from holding its guard across .await points in situations where the task is not movable between threads, this virtually never leads to correct concurrent code in practice as it can easily lead to deadlocks.
+        >
+        > A common pattern is to wrap the Arc<Mutex<...>> in a struct that provides non-async methods for performing operations on the data within, and only lock the mutex inside these methods. The mini-redis example provides an illustration of this pattern.
+        - async (tokio) Mutex is more expensive than std mutex -- hence preference for latter in some performance critical situations where it *can* be used
 
 # Personal Notes
 
