@@ -28,9 +28,11 @@ async fn main() -> io::Result<()> {
                         // let mut buf = vec!(0; 0); // doesn't pass 'awaiting data from socket' stage
                         loop {
                                 tracing::info!("Awaiting data from socket...");
+                                // read() will return immediately if read portion is closed (not error)
+                                // this means handling the closing of the read component is critical
                                 match socket.read(&mut buf).await {
                                         // return value of `Ok(0)` signifies the remote closed
-                                        Ok(0) => return,
+                                        Ok(0) => return, //**Critical**: prevents inifinite loop. read() does not error on a closed 'read half' of TcpStream
                                         Ok(n) => {
                                                 let ref_so_i_can_print = &buf[..n];
                                                 tracing::info!(
