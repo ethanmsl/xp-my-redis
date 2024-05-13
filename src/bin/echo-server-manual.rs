@@ -18,12 +18,14 @@ async fn main() -> io::Result<()> {
                 tracing::debug!("Socket accepted; Spawning thread to process...");
                 tokio::spawn(async move {
                         tracing::debug!("1024 byte buffer being allotted");
-                        // NOTE: multiple buffer sizes fed into read seem to work.
-                        // it appears that it won't overfill or skip
-                        // let mut buf = vec![0; 1024];
+                        // NOTE_1: multiple buffer sizes fed into read seem to work. appears it won't overfill
+                        // NOTE_2: we use a **Vec** here, *not* an array
+                        //         an array would be stored in the Future's state-machine, potentioally bloating it.
+                        //         (not sure if this would make a smaller than u64 array worthwhile. More work for the scheduler?)
+                        // let mut buf = vec!(0; 1024);
                         let mut buf = vec![0; 7];
-                        // let mut buf = vec![0; 1];
-                        // let mut buf = vec![0; 0]; // doesn't pass 'awaiting data from socket' stage
+                        // let mut buf = vec!(0; 1);
+                        // let mut buf = vec!(0; 0); // doesn't pass 'awaiting data from socket' stage
                         loop {
                                 tracing::info!("Awaiting data from socket...");
                                 match socket.read(&mut buf).await {
