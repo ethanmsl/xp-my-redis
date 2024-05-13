@@ -1,4 +1,10 @@
-//! async echo server
+//! async echo server, which uses `io::copy`
+//!
+//! Note: this uses <TcpStream>.split() as a special zero cost split of the stream
+//! into read & write handles that co-exist in a task.
+//!
+//! (vs. io::split(<thing>), which is more generic in what it takes and flexible in its
+//! handle use and uses an Arc & Mutex)
 
 use my_redis::boilerplate::tracing_subscribe_boilerplate;
 use my_redis::boilerplate::SubKind;
