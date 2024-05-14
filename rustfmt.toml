@@ -23,7 +23,7 @@
 
 # group_imports = "StdExternalCrate" # category style grouping of imports (ala isort in python)
 # struct_field_align_threshold = 20  # move distance to seek type alignment in struct fields
-tab_spaces = 8                     # legible groups! :)
+tab_spaces = 4                     # legible groups! :)
 
 # # trailing_semicolon = false      # no `;` after continue/break/return
 # use_field_init_shorthand = true # let _ = some_struct {x, y, z}
