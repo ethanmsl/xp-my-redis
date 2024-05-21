@@ -21,6 +21,7 @@ pub mod boilerplate {
                 .expect("Valid filter input provided.");
 
                 tracing_subscriber::fmt()
+                    .pretty()
                     .with_env_filter(filter)
                     .with_file(true)
                     .with_line_number(true)
