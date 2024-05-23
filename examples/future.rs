@@ -10,6 +10,7 @@ use std::collections::VecDeque;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+use std::thread;
 use std::time::{Duration, Instant};
 
 struct Delay {
@@ -29,6 +30,26 @@ impl Future for Delay {
             tracing::debug!(?now, "recorded time of action");
             Poll::Ready("done")
         } else {
+            // get handle to task's waker
+            let waker = cx.waker().clone();
+            let when = self.when;
+
+            // spawn a timer thread.
+            // note: while illustrative I assume this would have no efficiency gains
+            // unlike some signalling which is handled by outside systems that have no resources to share
+            // or that perform light work waiting on 'more' more external systems to signal them in turn
+            thread::spawn(move || {
+                let now = Instant::now();
+
+                // lol, okay, maybe this is efficient depending on how sleep timers work
+                // may hook into something more efficient with parent system
+                // (though spawning a task to spawn a thread to spawn a thread to wait on a timer
+                // is, ofc, funny -- though also, ofc, meant to be illustrative)
+                if now < when {
+                    thread::sleep(when - now);
+                }
+                waker.wake();
+            });
             cx.waker().wake_by_ref();
             Poll::Pending
         }
