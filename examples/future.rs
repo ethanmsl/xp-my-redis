@@ -57,3 +57,56 @@ async fn my_async_fn() -> Result<()> {
 
     Ok(())
 }
+
+// ///////////////////////////////////////////////
+
+#[allow(dead_code)]
+/// Example of what the main function is turned into by the asyc'ing of it
+mod just_for_illustration {
+
+    use super::*;
+    use std::future::Future;
+    use std::pin::Pin;
+    use std::task::{Context, Poll};
+    use std::time::{Duration, Instant};
+
+    enum MainFuture {
+        // initialized; never polled
+        State0,
+        // waiting on `Delay`
+        State1(Delay),
+        // future has completed
+        Terminated,
+    }
+
+    impl Future for MainFuture {
+        type Output = ();
+        fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+            use MainFuture::*;
+
+            loop {
+                match *self {
+                    State0 => {
+                        // TODO: what's the 10ms spacing for?
+                        let when = Instant::now() + Duration::from_millis(10);
+                        let polled = 0;
+
+                        let future = Delay { when, polled };
+                        *self = State1(future);
+                    }
+                    State1(ref mut my_future) => match Pin::new(my_future).poll(cx) {
+                        Poll::Ready(out) => {
+                            assert_eq!(out, "done");
+                            *self = Terminated;
+                            return Poll::Pending;
+                        }
+                        Poll::Pending => {
+                            return Poll::Pending;
+                        }
+                    },
+                    Terminated => panic!("future polled after completion"),
+                }
+            }
+        }
+    }
+}
