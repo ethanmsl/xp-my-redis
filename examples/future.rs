@@ -43,7 +43,7 @@ async fn main() -> Result<()> {
 
     let when = Instant::now() + Duration::from_millis(10);
     let polled = 0;
-    let mut future = Delay { when, polled };
+    let future = Delay { when, polled };
     let out = future.await;
     assert_eq!(out, "done");
 
