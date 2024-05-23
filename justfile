@@ -57,7 +57,7 @@ check:
 
 # Auto-fix errors picked up by check.
 [confirm]
-check-fix:
+fix:
      typos --exclude 'data/*' --write-changes
 
 # Clean up cargo build artifacts.
