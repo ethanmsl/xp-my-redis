@@ -44,6 +44,11 @@ pub mod boilerplate {
     }
 }
 
+pub mod error {
+    pub type Result<T> = core::result::Result<T, Error>;
+    pub type Error = Box<dyn std::error::Error>;
+}
+
 #[allow(dead_code)]
 mod shard_hash {
     use std::{
