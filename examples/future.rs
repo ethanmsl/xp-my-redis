@@ -12,13 +12,19 @@ use std::time::{Duration, Instant};
 
 struct Delay {
     when: Instant,
+    polled: u64,
 }
 impl Future for Delay {
     type Output = &'static str;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<&'static str> {
-        if Instant::now() >= self.when {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<&'static str> {
+        self.polled += 1;
+        tracing::trace!(self.polled, "number of times polled");
+        let now = Instant::now();
+        if now >= self.when {
             println!("Hello world. An Instant of note has passed!");
+            tracing::debug!(?self.when, "goal time");
+            tracing::debug!(?now, "recorded time of action");
             Poll::Ready("done")
         } else {
             cx.waker().wake_by_ref();
@@ -26,34 +32,6 @@ impl Future for Delay {
         }
     }
 }
-enum MainFuture {
-    // initialized, never polled
-    Sate0,
-    //Waiting on `Delay`
-    State1(Delay),
-    // Future has completed
-    Terminated,
-}
-
-// type Delay = !; // this is only available in nightly
-// impl Future for MainFuture {
-//     type Output = ();
-
-//     fn poll(mut self: Pin<&mut Self>, cs: &mut Context<'_>) -> Poll<()> {
-//         use MainFuture::*;
-
-//         loop {
-//             match *self {
-//                 State0 => {
-//                     let when = Instant::now() + Duration::from_millis(10);
-//                     let future = Delay { when };
-//                     *self = State1(future);
-//                 }
-//                 State1(ref m)
-//             }
-//         }
-//     }
-// }
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -64,12 +42,14 @@ async fn main() -> Result<()> {
     let _code_as_machine = my_async_fn();
 
     let when = Instant::now() + Duration::from_millis(10);
-    let future = Delay { when };
+    let polled = 0;
+    let mut future = Delay { when, polled };
     let out = future.await;
     assert_eq!(out, "done");
 
     Ok(())
 }
+
 async fn my_async_fn() -> Result<()> {
     tracing::info!("hello from async");
     let _socket = TcpStream::connect("127.0.0.1:3000").await?;
