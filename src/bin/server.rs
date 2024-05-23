@@ -8,7 +8,6 @@ use bytes::Bytes;
 use mini_redis::Frame;
 use my_redis::boilerplate;
 use tokio::net::{TcpListener, TcpStream};
-use tracing;
 
 type Db = Arc<Mutex<HashMap<String, Bytes>>>;
 
