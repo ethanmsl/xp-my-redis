@@ -6,6 +6,7 @@ use my_redis::error::Result;
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use tokio::net::TcpStream;
+use tokio::sync::Notify;
 use tracing;
 
 use std::collections::VecDeque;
@@ -14,6 +15,56 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::thread;
 use std::time::{Duration, Instant};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    boilerplate::tracing_subscribe_boilerplate(boilerplate::SubKind::Tracing(String::from(
+        "trace",
+    )));
+    tracing::debug!("Start main.");
+    let _code_as_machine = my_async_fn();
+
+    let when = Instant::now() + Duration::from_millis(10);
+    let polled = 0;
+    let future = Delay { when, polled };
+    let out = future.await;
+    assert_eq!(out, "done");
+
+    // with idiomatic(ish?) Notify and delay() fn
+    // not structurally related to struct `Delay`
+    delay(Duration::from_millis(1000)).await;
+
+    thread::sleep(Duration::from_millis(2000));
+    Ok(())
+}
+
+/// NOTE: this is separate from struct `Delay`
+/// serves as a higherlevel, as used / idiomatic
+/// implementation of similar functionality
+/// (vs didactic implementation using struct `Delay`)
+#[tracing::instrument]
+async fn delay(dur: Duration) {
+    tracing::debug!(?dur, "starting delay() for dur value: ");
+    let when = Instant::now();
+    let notify = Arc::new(Notify::new());
+    let notify_clone = notify.clone();
+
+    thread::spawn(move || {
+        tracing::debug!("spawning wait thread");
+        let now = Instant::now();
+        if now < when {
+            thread::sleep(when - now);
+        }
+
+        tracing::trace!("providing notification permit...");
+        notify_clone.notify_one();
+        tracing::trace!("provided notification permit");
+    });
+
+    tracing::debug!("awaiting notification permit");
+    notify.notified().await;
+    tracing::info!("notification permit received!");
+}
 
 struct Delay {
     when: Instant,
@@ -58,23 +109,6 @@ impl Future for Delay {
             Poll::Pending
         }
     }
-}
-
-#[tokio::main]
-async fn main() -> Result<()> {
-    boilerplate::tracing_subscribe_boilerplate(boilerplate::SubKind::Tracing(String::from(
-        "trace",
-    )));
-    tracing::debug!("Start main.");
-    let _code_as_machine = my_async_fn();
-
-    let when = Instant::now() + Duration::from_millis(10);
-    let polled = 0;
-    let future = Delay { when, polled };
-    let out = future.await;
-    assert_eq!(out, "done");
-
-    Ok(())
 }
 
 async fn my_async_fn() -> Result<()> {
