@@ -18,6 +18,8 @@ use std::time::{Duration, Instant};
 struct Delay {
     when: Instant,
     polled: u64,
+    // waker: Option<Arc<Mutex<Waker>>>, // <-- not adding this, as it would require changing the running code
+    //                                      same with the `impl Future for Delay`, but it's an interesting section
 }
 impl Future for Delay {
     type Output = &'static str;
