@@ -1,8 +1,10 @@
 //! Example future implementation
+use futures::task::{self, ArcWake};
 
-use futures::task;
 use my_redis::boilerplate;
 use my_redis::error::Result;
+use std::sync::mpsc;
+use std::sync::{Arc, Mutex};
 use tokio::net::TcpStream;
 use tracing;
 
@@ -83,16 +85,66 @@ async fn my_async_fn() -> Result<()> {
 // //////////////////////////////////////////////
 
 struct MiniTokio {
-    tasks: VecDeque<Task>,
+    scheduled: mpsc::Receiver<Arc<Task>>,
+    sender: mpsc::Sender<Arc<Task>>,
 }
 
-type Task = Pin<Box<dyn Future<Output = ()> + Send>>;
+struct Task {
+    // mutex is not used in real tokio in whatever the here equivalent is
+    // as only on thread would be accessingTaskFuture
+    task_future: Mutex<TaskFuture>,
+    executor: mpsc::Sender<Arc<Task>>,
+}
+impl Task {
+    fn poll(self: Arc<Self>) {
+        // Create a waker from the `Task` instance. This
+        // uses the `ArcWake` impl from above.
+        let waker = task::waker(self.clone());
+        let mut cx = Context::from_waker(&waker);
+
+        // No other thread ever tries to lock the task_future
+        let mut task_future = self.task_future.try_lock().unwrap();
+
+        // Poll the inner future
+        task_future.poll(&mut cx);
+    }
+
+    // Spawns a new task with the given future.
+    //
+    // Initializes a new Task harness containing the given future and pushes it
+    // onto `sender`. The receiver half of the channel will get the task and
+    // execute it.
+    fn spawn<F>(future: F, sender: &mpsc::Sender<Arc<Task>>)
+    where
+        F: Future<Output = ()> + Send + 'static,
+    {
+        let task = Arc::new(Task {
+            task_future: Mutex::new(TaskFuture::new(future)),
+            executor: sender.clone(),
+        });
+
+        let _ = sender.send(task);
+    }
+    fn schedule(self: &Arc<Self>) {
+        self.executor.send(self.clone());
+    }
+}
+impl ArcWake for Task {
+    fn wake_by_ref(arc_self: &Arc<Self>) {
+        arc_self.schedule();
+    }
+}
+
+/// A syructure holding a future and the result of the latest `poll` call
+struct TaskFuture {
+    future: Pin<Box<dyn Future<Output = ()> + Send>>,
+    poll: Poll<()>,
+}
 
 impl MiniTokio {
     fn new() -> MiniTokio {
-        MiniTokio {
-            tasks: VecDeque::new(),
-        }
+        let (sender, scheduled) = mpsc::channel();
+        MiniTokio { scheduled, sender }
     }
 
     /// Spawn a future onto the mini-tokio instance.
@@ -100,16 +152,30 @@ impl MiniTokio {
     where
         F: Future<Output = ()> + Send + 'static,
     {
-        self.tasks.push_back(Box::pin(future));
+        Task::spawn(future, &self.sender);
     }
 
     fn run(&mut self) {
-        let waker = task::noop_waker();
-        let mut cx = Context::from_waker(&waker);
-        while let Some(mut task) = self.tasks.pop_front() {
-            if task.as_mut().poll(&mut cx).is_pending() {
-                self.tasks.push_back(task);
-            }
+        while let Ok(task) = self.scheduled.recv() {
+            task.poll();
+        }
+    }
+}
+
+impl TaskFuture {
+    fn new(future: impl Future<Output = ()> + Send + 'static) -> TaskFuture {
+        TaskFuture {
+            future: Box::pin(future),
+            poll: Poll::Pending,
+        }
+    }
+
+    fn poll(&mut self, cx: &mut Context<'_>) {
+        // spurious wake-ups allowed
+        // even after `Ready`
+        // polling after `Ready` is **not** allowed
+        if self.poll.is_pending() {
+            self.poll = self.future.as_mut().poll(cx);
         }
     }
 }
