@@ -6,7 +6,7 @@
 
 
 # brace_style = "PreferSameLine" # braces start on line of what they connect to
-# # chain_width = 0                # default: 60
+chain_width = 0                # default: 60
 # # control_brace_style = "ClosingNextLine" # e.g. if & else in line with eachother
 
 # # format_strings = true        # auto line-break strings (easier to read, more annoying to edit)
@@ -23,7 +23,7 @@
 
 # group_imports = "StdExternalCrate" # category style grouping of imports (ala isort in python)
 # struct_field_align_threshold = 20  # move distance to seek type alignment in struct fields
-tab_spaces = 4                     # legible groups! :)
+tab_spaces = 8                     # legible groups! :)
 
 # # trailing_semicolon = false      # no `;` after continue/break/return
 # use_field_init_shorthand = true # let _ = some_struct {x, y, z}
