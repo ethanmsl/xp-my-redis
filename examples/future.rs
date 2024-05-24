@@ -9,7 +9,6 @@ use tokio::net::TcpStream;
 use tokio::sync::Notify;
 use tracing;
 
-use std::collections::VecDeque;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -120,17 +119,20 @@ async fn my_async_fn() -> Result<()> {
 }
 // //////////////////////////////////////////////
 
+#[allow(dead_code)]
 struct MiniTokio {
     scheduled: mpsc::Receiver<Arc<Task>>,
     sender: mpsc::Sender<Arc<Task>>,
 }
 
+#[allow(dead_code)]
 struct Task {
     // mutex is not used in real tokio in whatever the here equivalent is
     // as only on thread would be accessingTaskFuture
     task_future: Mutex<TaskFuture>,
     executor: mpsc::Sender<Arc<Task>>,
 }
+#[allow(dead_code)]
 impl Task {
     fn poll(self: Arc<Self>) {
         // Create a waker from the `Task` instance. This
@@ -162,7 +164,9 @@ impl Task {
         let _ = sender.send(task);
     }
     fn schedule(self: &Arc<Self>) {
-        self.executor.send(self.clone());
+        self.executor
+            .send(self.clone())
+            .expect("Task send sucessful");
     }
 }
 impl ArcWake for Task {
@@ -177,6 +181,7 @@ struct TaskFuture {
     poll: Poll<()>,
 }
 
+#[allow(dead_code)]
 impl MiniTokio {
     fn new() -> MiniTokio {
         let (sender, scheduled) = mpsc::channel();
