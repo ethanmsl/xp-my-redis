@@ -32,6 +32,19 @@ uses: pre-fab **mini-redis** to interact with (at least initially)
         - **watch**: many readers, but consumed on *push*, not by reading
         - ~task-style exists in [async-channel](https://docs.rs/async-channel/) crate: multi consumer, consumption on read by anyone
 
+- select:
+        - ¡DANGER! - Cancellation is not 'safe' in soft sense. 
+                - TODO: are the blocking inter-await periods guaranteed to finish?
+        - end-select branches are not separate threads (like with spawn_thread)
+                - TODO: references that are mutually exclusive treated as such? (e.g. can two different branches take a mut ref or ownership of the same variable -- knowing that only one will ever fire?)
+- streams:
+        - probably want `stream_ext` import -- either as separate tokio crate or future crate
+                - `tokio::streams::stream_ext` x|| `futures::stream_ext`
+        - designed to operate very similar to iterators (which seems quite nice)
+        - '**stream adaptors**' are stream_iterator ~~> stream_iterator -like methods (e.g. `map`, `filter`, etc/)
+        - unclear what buffering mechanisms exist if any in the case of outside input
+                - e.g. if streaming a response from a remote server what happens if processing it slowly?
+        - `async-stream` crate has a nice macro for defining streams
 
 # Personal Notes
 
