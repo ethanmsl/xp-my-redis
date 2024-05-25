@@ -4,7 +4,7 @@ use mini_redis::client;
 use my_redis::boilerplate;
 use tokio_stream::StreamExt;
 
-const socket_str: &str = "127.0.0.1:6379";
+const SOCKET_STR: &str = "127.0.0.1:6379";
 #[tokio::main]
 async fn main() -> mini_redis::Result<()> {
         boilerplate::tracing_subscribe_boilerplate(boilerplate::SubKind::Tracing(String::from(
@@ -35,8 +35,8 @@ async fn main() -> mini_redis::Result<()> {
 #[tracing::instrument]
 async fn publish() -> mini_redis::Result<()> {
         tracing::info!("starting client (publisher)");
-        tracing::info!(socket_str, "connecting to");
-        let mut client = client::connect(socket_str).await?;
+        tracing::info!(SOCKET_STR, "connecting to");
+        let mut client = client::connect(SOCKET_STR).await?;
 
         // publishes to the "number" channel
         client.publish("numbers", "lost to time".into())
@@ -59,8 +59,8 @@ async fn publish() -> mini_redis::Result<()> {
 #[tracing::instrument]
 async fn subscribe() -> mini_redis::Result<()> {
         tracing::info!("starting subscriber");
-        tracing::info!(socket_str, "connecting to");
-        let client = client::connect(socket_str).await?;
+        tracing::info!(SOCKET_STR, "connecting to");
+        let client = client::connect(SOCKET_STR).await?;
 
         // ¿defines "numbers" channel to listen to
         let subscriber = client
