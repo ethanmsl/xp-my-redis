@@ -39,6 +39,8 @@ async fn publish() -> mini_redis::Result<()> {
         let mut client = client::connect(socket_str).await?;
 
         // publishes to the "number" channel
+        client.publish("numbers", "lost to time".into())
+                .await?;
         client.publish("numbers", "1".into())
                 .await?;
         client.publish("numbers", "two".into())
@@ -64,7 +66,23 @@ async fn subscribe() -> mini_redis::Result<()> {
         let subscriber = client
                 .subscribe(vec!["numbers".to_string()])
                 .await?;
-        let messages = subscriber.into_stream();
+        let messages = subscriber
+                .into_stream()
+                .filter(|msg| match msg {
+                        Ok(msg) if msg
+                                .content
+                                .len()
+                                == 1 =>
+                        {
+                                true
+                        }
+                        _ => false,
+                })
+                .map(|msg| {
+                        msg.expect("content extraction")
+                                .content
+                })
+                .take(3);
 
         tokio::pin!(messages);
 
