@@ -45,6 +45,30 @@ uses: pre-fab **mini-redis** to interact with (at least initially)
         - unclear what buffering mechanisms exist if any in the case of outside input
                 - e.g. if streaming a response from a remote server what happens if processing it slowly?
         - `async-stream` crate has a nice macro for defining streams
+- Async { ... - sync }
+        - spawn_blocking:
+                - builder allows native thread cap
+                - ¿But what about blocking code that's multi-threaded?
+- Sync { ... - async }
+
+```rust
+#[tokio::main]
+async fn main() {
+    println!("Hello world");
+}
+```
+===
+```rust
+fn main() {
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(async {
+            println!("Hello world");
+        })
+}
+```
 
 # Personal Notes
 
