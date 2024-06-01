@@ -2,6 +2,7 @@
 
 use my_redis::{boilerplate::{tracing_subscribe_boilerplate, SubKind},
                error::Result};
+use rand::seq::SliceRandom;
 use tokio::{io,
             sync::{mpsc, oneshot}};
 
@@ -85,14 +86,15 @@ async fn main() -> Result<()> {
 
     let yorrick_tx = tx;
 
-    let resp = send_message(yorrick_tx.clone(), "increase").await;
-    println!("Response: {:?}", resp);
-    let resp = send_message(yorrick_tx.clone(), "increase").await;
-    println!("Response: {:?}", resp);
-    let resp = send_message(yorrick_tx.clone(), "get").await;
-    println!("Response: {:?}", resp);
-    let resp = send_message(yorrick_tx.clone(), "increase").await;
-    println!("Response: {:?}", resp);
+    // randomly select messages to send to actor
+    let mut rng = rand::thread_rng();
+    let messages = ["increase", "get"];
+    for _ in 0..5 {
+        if let Some(&message) = messages.choose(&mut rng) {
+            let resp = send_message(yorrick_tx.clone(), message).await;
+            println!("Response: {:?}", resp);
+        }
+    }
     let resp = send_message(yorrick_tx.clone(), "get").await;
     println!("Response: {:?}", resp);
 
@@ -110,7 +112,7 @@ async fn send_message(tx: mpsc::Sender<ActorMessage>,
     let msg = ActorMessage::SendMessage { message,
                                           respond_to: txo };
 
-    tracing::info!("Sending message to actor.");
+    tracing::debug!("Sending message to actor.");
     tx.send(msg).await?;
 
     tracing::debug!("Waiting for response from actor.");
