@@ -90,10 +90,10 @@ async fn main() -> Result<()> {
     let mut rng = rand::thread_rng();
     let messages = ["increase", "get"];
     for _ in 0..5 {
-        if let Some(&message) = messages.choose(&mut rng) {
-            let resp = send_message(yorrick_tx.clone(), message).await;
-            println!("Response: {:?}", resp);
-        }
+        let &message = messages.choose(&mut rng)
+                               .expect("Slice chosen over should not be empty.");
+        let resp = send_message(yorrick_tx.clone(), message).await;
+        println!("Response: {:?}", resp);
     }
     let resp = send_message(yorrick_tx.clone(), "get").await;
     println!("Response: {:?}", resp);
