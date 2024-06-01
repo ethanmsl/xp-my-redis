@@ -25,11 +25,18 @@ enum ActorMessage {
 }
 
 impl MyActor {
+    /// Create a new actor, passing in a receiver
     fn new(receiver: mpsc::Receiver<ActorMessage>) -> Self {
         MyActor { receiver,
                   actor_info: Some(0) }
     }
 
+    /// Take ActorMessage, opreate, and respond
+    ///
+    /// # NOTE:
+    /// The Actor **must** respond.
+    /// **OR** the receiver must be set up to deal with the Error
+    /// of a dropped channel.
     async fn handle_message(&mut self, msg: ActorMessage) -> io::Result<()> {
         match msg {
             ActorMessage::SendMessage { message,
@@ -64,7 +71,7 @@ async fn main() -> io::Result<()> {
     let mut yorrick = MyActor::new(rx);
 
     // use tokio spawn to run MyActor and have it wait to receive messages
-    // we don't take a yorrick_handle here; using our mpsc & oneshots soley
+    // we don't take a yorrick_handle here; using our mpsc & oneshots solely
     let _ = tokio::spawn(async move {
         while let Some(msg) = yorrick.receiver.recv().await {
             tracing::info!("Received message: {:?}", msg);
@@ -79,12 +86,36 @@ async fn main() -> io::Result<()> {
     let (txo, rxo) = oneshot::channel();
     let msg = ActorMessage::SendMessage { message:    String::from("increase"),
                                           respond_to: txo, };
-
     // send message to actor
     tracing::info!("Sending message to actor.");
     tx.send(msg).await.expect("Message sent.");
-    tracing::info!("Message sent to actor succesfully.");
+    tracing::info!("Message sent to actor successfully.");
+    // wait for oneshot response
+    tracing::debug!("Waiting for response from actor.");
+    let response = rxo.await.expect("Response received.");
+    println!("Response: {:?}", response);
 
+    // oneshot channel to receive response from actor
+    let (txo, rxo) = oneshot::channel();
+    let msg = ActorMessage::SendMessage { message:    String::from("increase"),
+                                          respond_to: txo, };
+    // send message to actor
+    tracing::info!("Sending message to actor.");
+    tx.send(msg).await.expect("Message sent.");
+    tracing::info!("Message sent to actor successfully.");
+    // wait for oneshot response
+    tracing::debug!("Waiting for response from actor.");
+    let response = rxo.await.expect("Response received.");
+    println!("Response: {:?}", response);
+
+    // oneshot channel to receive response from actor
+    let (txo, rxo) = oneshot::channel();
+    let msg = ActorMessage::SendMessage { message:    String::from("get"),
+                                          respond_to: txo, };
+    // send message to actor
+    tracing::info!("Sending message to actor.");
+    tx.send(msg).await.expect("Message sent.");
+    tracing::info!("Message sent to actor successfully.");
     // wait for oneshot response
     tracing::debug!("Waiting for response from actor.");
     let response = rxo.await.expect("Response received.");
