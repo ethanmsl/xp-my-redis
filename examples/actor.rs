@@ -1,6 +1,7 @@
 //! actor example using tokio
 
-use my_redis::boilerplate::{tracing_subscribe_boilerplate, SubKind};
+use my_redis::{boilerplate::{tracing_subscribe_boilerplate, SubKind},
+               error::Result};
 use tokio::{io,
             sync::{mpsc, oneshot}};
 
@@ -37,7 +38,7 @@ impl MyActor {
     /// The Actor **must** respond.
     /// **OR** the receiver must be set up to deal with the Error
     /// of a dropped channel.
-    async fn handle_message(&mut self, msg: ActorMessage) -> io::Result<()> {
+    async fn handle_message(&mut self, msg: ActorMessage) -> Result<()> {
         match msg {
             ActorMessage::SendMessage { message,
                                         respond_to, } => {
@@ -64,7 +65,7 @@ impl MyActor {
 
 // //////////////////////////////////// //
 #[tokio::main]
-async fn main() -> io::Result<()> {
+async fn main() -> Result<()> {
     tracing_subscribe_boilerplate(SubKind::Tracing(String::from("debug")));
 
     let (tx, rx) = mpsc::channel::<ActorMessage>(32); // number is buffer size
@@ -82,45 +83,36 @@ async fn main() -> io::Result<()> {
         tracing::warn!("Actor has stopped receiving messages.");
     });
 
-    // oneshot channel to receive response from actor
-    let (txo, rxo) = oneshot::channel();
-    let msg = ActorMessage::SendMessage { message:    String::from("increase"),
-                                          respond_to: txo, };
-    // send message to actor
-    tracing::info!("Sending message to actor.");
-    tx.send(msg).await.expect("Message sent.");
-    tracing::info!("Message sent to actor successfully.");
-    // wait for oneshot response
-    tracing::debug!("Waiting for response from actor.");
-    let response = rxo.await.expect("Response received.");
-    println!("Response: {:?}", response);
+    let yorrick_tx = tx;
 
-    // oneshot channel to receive response from actor
-    let (txo, rxo) = oneshot::channel();
-    let msg = ActorMessage::SendMessage { message:    String::from("increase"),
-                                          respond_to: txo, };
-    // send message to actor
-    tracing::info!("Sending message to actor.");
-    tx.send(msg).await.expect("Message sent.");
-    tracing::info!("Message sent to actor successfully.");
-    // wait for oneshot response
-    tracing::debug!("Waiting for response from actor.");
-    let response = rxo.await.expect("Response received.");
-    println!("Response: {:?}", response);
+    let resp = send_message(yorrick_tx.clone(), "increase").await;
+    println!("Response: {:?}", resp);
+    let resp = send_message(yorrick_tx.clone(), "increase").await;
+    println!("Response: {:?}", resp);
+    let resp = send_message(yorrick_tx.clone(), "get").await;
+    println!("Response: {:?}", resp);
+    let resp = send_message(yorrick_tx.clone(), "increase").await;
+    println!("Response: {:?}", resp);
+    let resp = send_message(yorrick_tx.clone(), "get").await;
+    println!("Response: {:?}", resp);
 
-    // oneshot channel to receive response from actor
-    let (txo, rxo) = oneshot::channel();
-    let msg = ActorMessage::SendMessage { message:    String::from("get"),
-                                          respond_to: txo, };
-    // send message to actor
-    tracing::info!("Sending message to actor.");
-    tx.send(msg).await.expect("Message sent.");
-    tracing::info!("Message sent to actor successfully.");
-    // wait for oneshot response
-    tracing::debug!("Waiting for response from actor.");
-    let response = rxo.await.expect("Response received.");
-    println!("Response: {:?}", response);
-
-    println!("unimplemented");
     Ok(())
+}
+
+async fn send_message(tx: mpsc::Sender<ActorMessage>,
+                      message: impl Into<String>)
+                      -> Result<Option<u32>> {
+    // convert to String, if necessary
+    let message = message.into();
+
+    // oneshot channel to receive response from actor
+    let (txo, rxo) = oneshot::channel();
+    let msg = ActorMessage::SendMessage { message,
+                                          respond_to: txo };
+
+    tracing::info!("Sending message to actor.");
+    tx.send(msg).await?;
+
+    tracing::debug!("Waiting for response from actor.");
+    Ok(rxo.await?)
 }
