@@ -3,7 +3,8 @@
 use my_redis::{boilerplate::{tracing_subscribe_boilerplate, SubKind},
                error::Result};
 use rand::seq::SliceRandom;
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::{mpsc::{self, Sender},
+                  oneshot};
 
 /// Receiver component to listen in on
 #[derive(Debug)]
@@ -17,6 +18,8 @@ struct MyActor {
 /// Should contaain message *for* actor
 /// and sending channel for actor to *respond* with
 /// Generator should hold on to receiver end, ofc.
+///
+/// Alternate Name: Actor_Internal_State
 #[derive(Debug)]
 enum ActorMessage {
     SendMessage {
@@ -63,6 +66,36 @@ impl MyActor {
     }
 }
 
+async fn send_message(tx: mpsc::Sender<ActorMessage>,
+                      message: impl Into<String>)
+                      -> Result<Option<u32>> {
+    // convert to String, if necessary
+    let message = message.into();
+
+    // oneshot channel to receive response from actor
+    let (txo, rxo) = oneshot::channel();
+    let msg = ActorMessage::SendMessage { message,
+                                          respond_to: txo };
+
+    tracing::debug!("Sending message to actor.");
+    tx.send(msg).await?;
+
+    tracing::debug!("Waiting for response from actor.");
+    Ok(rxo.await?)
+}
+
+async fn send_random_messages(tx: Sender<ActorMessage>, n: u32) {
+    // randomly select messages to send to actor
+    let mut rng = rand::thread_rng();
+    let messages = ["increase", "get"];
+    for i in 0..n {
+        let &message = messages.choose(&mut rng)
+                               .expect("Slice chosen over should not be empty.");
+        let resp = send_message(tx.clone(), message).await;
+        println!("Response {}: {:?}", i + 1, resp);
+    }
+}
+
 // //////////////////////////////////// //
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -85,35 +118,9 @@ async fn main() -> Result<()> {
 
     let yorrick_tx = tx;
 
-    // randomly select messages to send to actor
-    let mut rng = rand::thread_rng();
-    let messages = ["increase", "get"];
-    for _ in 0..5 {
-        let &message = messages.choose(&mut rng)
-                               .expect("Slice chosen over should not be empty.");
-        let resp = send_message(yorrick_tx.clone(), message).await;
-        println!("Response: {:?}", resp);
-    }
+    send_random_messages(yorrick_tx.clone(), 10).await;
     let resp = send_message(yorrick_tx.clone(), "get").await;
-    println!("Response: {:?}", resp);
+    println!("Response to final \"get\": {:?}", resp);
 
     Ok(())
-}
-
-async fn send_message(tx: mpsc::Sender<ActorMessage>,
-                      message: impl Into<String>)
-                      -> Result<Option<u32>> {
-    // convert to String, if necessary
-    let message = message.into();
-
-    // oneshot channel to receive response from actor
-    let (txo, rxo) = oneshot::channel();
-    let msg = ActorMessage::SendMessage { message,
-                                          respond_to: txo };
-
-    tracing::debug!("Sending message to actor.");
-    tx.send(msg).await?;
-
-    tracing::debug!("Waiting for response from actor.");
-    Ok(rxo.await?)
 }
