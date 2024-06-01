@@ -25,5 +25,5 @@
 // }
 
 fn main() {
-        unreachable!("mess of unresolvable references -- guide doesn't make sensible suggestions and I don't want to hunt through mini-redis")
+    unreachable!("mess of unresolvable references -- guide doesn't make sensible suggestions and I don't want to hunt through mini-redis")
 }
