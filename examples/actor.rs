@@ -1,8 +1,7 @@
 //! actor example using tokio
 
 use my_redis::boilerplate::{tracing_subscribe_boilerplate, SubKind};
-use tokio::{io::{self, AsyncReadExt, AsyncWriteExt},
-            net::TcpStream,
+use tokio::{io,
             sync::{mpsc, oneshot}};
 
 /// Receiver component to listen in on
