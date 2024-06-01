@@ -13,3 +13,4 @@ tracing = "0.1.40"
 futures = "0.3.30"
 clap = { version = "4.5.4", features = ["derive"] }
 tokio-stream = "0.1.15"
+rand = "0.8.5"
