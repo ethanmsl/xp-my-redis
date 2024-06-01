@@ -2,9 +2,9 @@
 
 use std::time::Duration;
 
-use my_redis::boilerplate::{tracing_subscribe_boilerplate, SubKind};
-use tokio::{io,
-            sync::{mpsc, oneshot}};
+use my_redis::{boilerplate::{tracing_subscribe_boilerplate, SubKind},
+               error::Result};
+use tokio::sync::{mpsc, oneshot};
 
 /// Receiver component to listen in on
 #[derive(Debug)]
@@ -39,7 +39,7 @@ impl MyActor {
     /// The Actor **must** respond.
     /// **OR** the receiver must be set up to deal with the Error
     /// of a dropped channel.
-    async fn handle_message(&mut self, msg: ActorMessage) -> io::Result<()> {
+    async fn handle_message(&mut self, msg: ActorMessage) -> Result<()> {
         match msg {
             ActorMessage::SendMessage { message,
                                         respond_to, } => {
@@ -63,33 +63,29 @@ impl MyActor {
         }
     }
 
-    async fn run_my_actor(mut self) {
+    async fn run_my_actor(mut self) -> Result<()> {
         while let Some(msg) = self.receiver.recv().await {
-            self.handle_message(msg);
+            tracing::info!("Received message: {:?}", msg);
+            self.handle_message(msg).await?;
         }
+        Ok(())
     }
 
-    fn off_on_my_own(mut self) {
+    fn off_on_my_own(self) -> Result<()> {
         tokio::spawn(async move {
             tracing::warn!("Woo! Spawned from function!");
-            while let Some(msg) = self.receiver.recv().await {
-                tracing::info!("Received message: {:?}", msg);
-                self.handle_message(msg)
-                    .await
-                    .expect("Message handling failed.");
-            }
+            let _result = self.run_my_actor().await;
             tracing::error!("Actor has stopped receiving messages.");
         });
+        Ok(())
     }
 
-    async fn off_on_my_own_async(mut self) {
+    async fn off_on_my_own_async(mut self) -> Result<()> {
         tokio::spawn(async move {
             tracing::warn!("Woo! Spawned from function!");
             while let Some(msg) = self.receiver.recv().await {
                 tracing::info!("Received message: {:?}", msg);
-                self.handle_message(msg)
-                    .await
-                    .expect("Message handling failed.");
+                let _result = self.handle_message(msg).await;
             }
             // NOTE: because this function is async, it will get dropped/cancelled
             //       by tokio as part of clean up.
@@ -97,20 +93,21 @@ impl MyActor {
             //       (at least that's current understanding)
             tracing::error!("(async run) Actor has stopped receiving messages.");
         });
+        Ok(())
     }
 }
 
 // //////////////////////////////////// //
 #[tokio::main]
-async fn main() -> io::Result<()> {
+async fn main() -> Result<()> {
     tracing_subscribe_boilerplate(SubKind::Tracing(String::from("debug")));
 
     let (tx, rx) = mpsc::channel::<ActorMessage>(32); // number is buffer size
-    let mut yorrick = MyActor::new(rx);
+    let yorrick = MyActor::new(rx);
 
     // method based tokio_spawn
     // both blocking and async work
-    yorrick.off_on_my_own();
+    yorrick.off_on_my_own()?;
     // yorrick.off_on_my_own_async().await;
 
     // oneshot channel to receive response from actor
@@ -155,11 +152,11 @@ async fn main() -> io::Result<()> {
     // /////////////////////// //
 
     let (tx, rx) = mpsc::channel::<ActorMessage>(32); // number is buffer size
-    let mut yorrick_2 = MyActor::new(rx);
+    let yorrick_2 = MyActor::new(rx);
     // method based tokio_spawn
     // both blocking and async work
     // yorrick.off_on_my_own();
-    yorrick_2.off_on_my_own_async().await;
+    yorrick_2.off_on_my_own_async().await?;
 
     // oneshot channel to receive response from actor
     let (txo, rxo) = oneshot::channel();

@@ -3,8 +3,7 @@
 use my_redis::{boilerplate::{tracing_subscribe_boilerplate, SubKind},
                error::Result};
 use rand::seq::SliceRandom;
-use tokio::{io,
-            sync::{mpsc, oneshot}};
+use tokio::sync::{mpsc, oneshot};
 
 /// Receiver component to listen in on
 #[derive(Debug)]
